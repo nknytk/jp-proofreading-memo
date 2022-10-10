@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>日本語校正補助付きメモ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<style>
+.form-like {
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  min-height: calc(1.5em + (0.75rem + 2px));
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+.row {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}  
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>日本語校正補助付きメモ</h2>
+<button class="btn btn-primary" onclick="test()">test</button>
+<div class="row">
+	<div class="col-mb-12">
+		<h3>入力欄</h3>
+		<textarea class="form-control" id="input-area" rows="10"></textarea>
+		<button class="btn btn-primary" onclick="correct()">校正</button> 
+	</div>
+</div>
+<div class="row">
+	<div class="col-mb-12">
+		<h3>校正案</h3>
+		<div class="form-like" id="output-area">
+		</div>
+	</div>
+</div>
+
+</div>
+
+<script>
+const refreshInterval = 1000
+// 使用しているモデルの入出力上限が128文字なので、少し余裕を持って区切る
+const maxSentenceLength = 120
+const resultCache = {}
+let prevText = ''
+
+/* APIから校正結果を取得して表示する */
+async function correct() {
+  const outputArea = document.getElementById('output-area')
+  clearChildren(outputArea)
+  outputArea.appendChild(createSpinner())
+
+  const inputs = splitText(document.getElementById('input-area').value)
+  const outputs = []
+  for (let text of inputs) {
+    if (text.trim() == '') {
+      outputs.push({from: text, to: text, op: null})
+    } else {
+      if (resultCache[text] == null) {
+        const prediction_raw = await fetch('/correct?text=' + encodeURIComponent(text))
+        const prediction = await prediction_raw.json()
+        prediction.tokens.forEach(token => outputs.push(token))
+        resultCache[text] = prediction
+      } else {
+        prediction.tokens.forEach(token => outputs.push(token))
+      }
+    }
+  }
+
+  clearChildren(outputArea)
+  mergeTokens(outputs).forEach(token => outputArea.appendChild(render(token)))
+}
+
+/* 校正モデルの制限長に収まるように文字列を分割する */
+function splitText(text) {
+  const texts = []
+
+  // 行ごとに区切る
+  const rows = text.split('\n')
+  for (let row of rows) {
+    if (row.trim() == '') {
+      texts.push('\n')
+      continue
+    }
+
+    //文ごとに区切る
+    while (row.indexOf('。') > 0) {
+      let sentence = row.slice(0, row.indexOf('。') + 1)
+      row = row.slice(row.indexOf('。') + 1, row.length + 1)
+      // 文が最大長以下なら文をそのまま入力する
+      if (sentence.length <= maxSentenceLength) {
+        texts.push(sentence)
+        continue
+      }
+      // 文が最大長を超えるなら、最大長を超えない範囲の最長の句読点までで区切る
+      let parts = sentence.split('、')
+      let chunk = parts[0] + '、'
+      for (let part of parts.slice(1, parts.length)) {
+        let newChunk = chunk + part + '、'
+        if (newChunk.length <= maxSentenceLength) {
+          chunk = newChunk
+        } else {
+          texts.push(chunk)
+          chunk = part
+        }
+      }
+      texts.push(chunk.trim('、'))
+    }
+    if (row) texts.push(row)
+
+    texts.push('\n')
+  }
+
+  return texts
+}
+
+function mergeTokens(tokens) {
+  const mergedTokens = []
+  let op = tokens[0].op
+  let prevToken = ''
+  let postToken = ''
+  for (let token of tokens) {
+    if (token.op == op) {
+      prevToken += token.from
+      postToken += token.to
+    } else {
+      mergedTokens.push({from: prevToken, to: postToken, op: op})
+      prevToken = token.from
+      postToken = token.to
+      op = token.op
+    }
+  }
+  mergedTokens.push({from: prevToken, to: postToken, op: op})
+  return mergedTokens
+}
+
+function render(token) {
+  if (token.to == '\n') {
+    return document.createElement('br')
+  } else if (token.op == null) {
+    const span = document.createElement('span')
+    span.innerText = token.to
+    return span
+  } else if (token.op == 'delete') {
+    const span = document.createElement('span')
+    span.innerText = token.from
+    span.style = 'text-decoration: line-through; background-color: #FFC0C0;'
+    return span
+  } else if (token.op == 'insert') {
+    const span = document.createElement('span')
+    span.innerText = token.to
+    span.style = 'background-color: #C0FFC0;'
+    return span
+  } else if (token.op == 'replace') {
+    const span = document.createElement('span')
+    const spanFrom = document.createElement('span')
+    const spanTo = document.createElement('span')
+    spanFrom.innerText = token.from
+    spanFrom.style = 'text-decoration: line-through; background-color: #FFC0C0;'
+    spanTo.innerText = token.to
+    spanTo.style = 'background-color: #C0FFC0;'
+    span.appendChild(spanFrom)
+    span.appendChild(spanTo)
+    return span
+  }
+}
+
+function createSpinner() {
+  const spinner = document.createElement('div')
+  spinner.classList.add('spinner-border')
+  spinner.setAttribute('role', 'status')
+  return spinner
+}
+
+function clearChildren(elem) {
+  if (elem) {
+    while (elem.hasChildNodes()) {
+      elem.removeChild(elem.firstChild)
+    }
+  }
+}
+</script>
+
+</body>
+</html>
