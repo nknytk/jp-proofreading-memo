@@ -68,7 +68,7 @@ async function correct() {
         prediction.tokens.forEach(token => outputs.push(token))
         resultCache[text] = prediction
       } else {
-        prediction.tokens.forEach(token => outputs.push(token))
+        resultCache[text].forEach(token => outputs.push(token))
       }
     }
   }
