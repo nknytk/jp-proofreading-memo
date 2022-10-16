@@ -1,18 +1,19 @@
 import json
+import sys
 import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from transformers import BatchEncoding
 from model import BertForMaskedLMPL
 
-BERT_MODEL_NAME = 'cl-tohoku/bert-base-japanese-whole-word-masking'
+BERT_MODEL_NAME = 'cl-tohoku/bert-base-japanese-v2'
 BATCH_SIZE = 32
 MAX_EPOCH = 10
 
 
-def train():
-    train_data = load_data('data/direct/train.jsonl')
-    val_data = load_data('data/direct/val.jsonl')
+def train(model_type):
+    train_data = load_data(f'data/split/train_{model_type}.jsonl')
+    val_data = load_data(f'data/split/val_{model_type}.jsonl')
     train_dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
     val_dataloader = DataLoader(val_data, batch_size=BATCH_SIZE)
 
@@ -21,7 +22,7 @@ def train():
         mode='min',
         save_top_k=1,
         save_weights_only=True,
-        dirpath='models/direct/'
+        dirpath=f'models/split/{model_type}'
     )
     early_stopping_checkpoint = pl.callbacks.early_stopping.EarlyStopping(monitor='val_loss', mode='min', patience=2)
 
@@ -41,4 +42,9 @@ def load_data(file_path: str):
 
 
 if __name__ == '__main__':
-    train()
+    if sys.argv[1] == '1':
+        print('train insertion')
+        train('insertion')
+    elif sys.argv[1] == '2':
+        print('train replacement')
+        train('replacement')

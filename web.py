@@ -19,7 +19,7 @@ def application(environ, start_response):
 
 def correct(query_string):
     text = parse_qs(query_string).get('text', ('', ))[0]
-    prediction = predict(text, 50)
+    prediction = predict(text)
     content = bytes(json.dumps(prediction, ensure_ascii=False), encoding='UTF=8')
     return '200 OK', [('Content-Type', 'application/json')], content
 

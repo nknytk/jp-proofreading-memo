@@ -17,11 +17,7 @@ $ pip install torch torchvision torchaudio --extra-index-url https://download.py
 $ pip install -r requirements.txt
 ```
 
-モデルのダウンロード
-
-```
-$ wget -O models/v0.1.0.ckpt "https://drive.google.com/file/d/1PLb7GoEQ-lXwMhnBqsCWxX5vVZf_Ilbt/view?usp=sharing"
-```
+パラメータファイルを[Google Drive](https://drive.google.com/file/d/1C6ciKX3wkWMBuaEIjAMKpZKs3m2Pmw3d/view?usp=sharing)からダウンロードし、`models/`以下に置く
 
 Webアプリケーションの起動
 
@@ -45,14 +41,14 @@ $ wget "https://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=https://nlp.ist.
 $ tar xzf JWTDv2.0.tar.gz
 $ cd ..
 $ python preprocess.py
-$ python train.py
+$ python train.py 2
 ```
 
-学習後に表示されるファイル名を`models/v0.1.0.ckpt`にリネームして利用する。
+学習後に表示されるファイル名を`models/v0.2.0.ckpt`にリネームして利用する。
 
 ## License
 
 CC-BY-SA 3.0
 
-* 日本語校正のベースモデルとして、[東北大学乾研究室](https://www.nlp.ecei.tohoku.ac.jp/)により作成された学習済みBERTモデル[cl-tohoku/bert-base-japanese-whole-word-masking](https://huggingface.co/cl-tohoku/bert-base-japanese-whole-word-masking)を使用しています。
+* 日本語校正のベースモデルとして、[東北大学乾研究室](https://www.nlp.ecei.tohoku.ac.jp/)により作成された学習済みBERTモデル[cl-tohoku/bert-base-japanese-v2](https://huggingface.co/cl-tohoku/bert-base-japanese-v2)を使用しています。
 * 校正の学習データとして、[京都大学黒橋・褚・村脇研究室](https://nlp.ist.i.kyoto-u.ac.jp/)により作成された[日本語Wikipedia入力誤りデータセット (v2)](https://nlp.ist.i.kyoto-u.ac.jp/?%E6%97%A5%E6%9C%AC%E8%AA%9EWikipedia%E5%85%A5%E5%8A%9B%E8%AA%A4%E3%82%8A%E3%83%87%E3%83%BC%E3%82%BF%E3%82%BB%E3%83%83%E3%83%88)を使用しています。

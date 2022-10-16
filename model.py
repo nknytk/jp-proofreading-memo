@@ -10,15 +10,17 @@ class BertForMaskedLMPL(pl.LightningModule):
         self.bert_mlm = BertForMaskedLM.from_pretrained(model_name)
 
     def training_step(self, batch, batch_idx):
-        output = self.bert_mlm(**batch)
-        loss = output.loss
+        loss = self._step(batch)
         self.log('train_loss', loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        output = self.bert_mlm(**batch)
-        loss = output.loss
+        loss = self._step(batch)
         self.log('val_loss', loss)
+
+    def _step(self, batch):
+        output = self.bert_mlm(**batch)
+        return output.loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
