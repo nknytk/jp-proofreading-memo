@@ -4,6 +4,16 @@
 
 ## 利用方法
 
+### Dockerを使用する場合
+
+Dockerhubから[Docker image](https://hub.docker.com/r/nknytk/jp-proofreading-memo)を取得して使用する。
+
+```
+$ sudo docker run --rm -p9310:9310 nknytk/jp-proofreading-memo:v0.2.0
+```
+
+http://localhost:9310 にアクセスして利用する。
+
 ### 手元に環境を作る場合
 
 Python環境の準備
@@ -27,10 +37,6 @@ $ python web.py
 
 http://localhost:9310 にアクセスして利用する。
 
-### Dockerを使用する場合
-
-あとで書く
-
 ### 学習から行う場合
 
 Python環境の準備の後、データをダウンロードして学習する。
@@ -44,7 +50,13 @@ $ python preprocess.py
 $ python train.py 2
 ```
 
-学習後に表示されるファイル名を`models/v0.2.0.ckpt`にリネームして利用する。
+学習後に表示されるファイル名を`models/v0.2.0.ckpt`にリネームし、Webアプリケーションを起動する。
+
+```
+$ python web.py
+```
+
+http://localhost:9310 にアクセスして利用する。
 
 ## License
 

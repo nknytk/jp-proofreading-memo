@@ -4,7 +4,6 @@ from time import time
 import numpy
 import torch
 import unidic_lite
-import ipadic
 import preprocess
 from model import BertForMaskedLMPL
 from fugashi import GenericTagger, Tagger
@@ -77,15 +76,8 @@ def _get_kana(text: str) -> str:
 
 if __name__ == '__main__':
     for txt in [
-        'ユーザーの思考に合わせた楽曲を配信する',
-        'メールに明日の会議の飼料を添付した。',
-        '乳酸菌で牛乳を発行するとヨーグルトにになる。',
-        '乳酸菌でで牛乳を発発酵するとヨーグルトになる。',
-        '突然、子供が帰省を発した。',
         'これが明日のの会議の試料です。',
         '最近の家電は以外と壊れやすいい。',
-        '取るべき手順が明確で、誤解サれないことを確認する。',
-        '空文字の　位置が　　ずれていないことを　確認する'
     ]:
         t0 = time()
         res = predict(txt)['output']

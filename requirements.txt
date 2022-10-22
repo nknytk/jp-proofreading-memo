@@ -1,5 +1,4 @@
 transformers
 fugashi
-ipadic
 pytorch-lightning
 unidic-lite
