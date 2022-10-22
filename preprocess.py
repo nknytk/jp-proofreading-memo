@@ -9,6 +9,7 @@ from transformers import BertJapaneseTokenizer
 
 MAX_LENGTH = 128
 R = 0.2
+N_VAL = 10000
 BERT_MODEL_NAME = 'cl-tohoku/bert-base-japanese-v2'
 tokenizer = BertJapaneseTokenizer.from_pretrained(BERT_MODEL_NAME, mecab_kwargs={'mecab_dic': 'unidic_lite'})
 
@@ -21,11 +22,11 @@ def prepare_data():
 
     train_val_insertion, train_val_replacement = load_data('data/jwtd_v2.0/train.jsonl')
     random.shuffle(train_val_insertion)
-    train_insertion = train_val_insertion[:int(len(train_val_insertion) * 0.9)]
-    val_insertion = train_val_insertion[int(len(train_val_insertion) * 0.9):]
+    train_insertion = train_val_insertion[N_VAL:]
+    val_insertion = train_val_insertion[:N_VAL]
     random.shuffle(train_val_replacement)
-    train_replacement = train_val_replacement[:int(len(train_val_replacement) * 0.9)]
-    val_replacement = train_val_replacement[int(len(train_val_replacement) * 0.9):]
+    train_replacement = train_val_replacement[N_VAL:]
+    val_replacement = train_val_replacement[:N_VAL]
 
     save_jsonl(train_insertion, 'data/split/train_insertion.jsonl')
     save_jsonl(val_insertion, 'data/split/val_insertion.jsonl')
