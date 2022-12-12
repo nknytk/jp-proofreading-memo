@@ -49,8 +49,8 @@
 
 <script>
 const refreshInterval = 1000
-// 使用しているモデルの入出力上限が128文字なので、少し余裕を持って区切る
-const maxSentenceLength = 120
+// 使用しているモデルの入出力上限が128単語なので、余裕を持って128文字を最大長とする
+const maxSentenceLength = 128
 const resultCache = {}
 let prevText = ''
 
@@ -102,19 +102,10 @@ function splitText(text) {
         texts.push(sentence)
         continue
       }
-      // 文が最大長を超えるなら、最大長を超えない範囲の最長の句読点までで区切る
+      // 文が最大長を超えるなら、句読点までを一単位として入力する
       let parts = sentence.split('、')
-      let chunk = parts[0] + '、'
-      for (let part of parts.slice(1, parts.length)) {
-        let newChunk = chunk + part + '、'
-        if (newChunk.length <= maxSentenceLength) {
-          chunk = newChunk
-        } else {
-          texts.push(chunk)
-          chunk = part
-        }
-      }
-      texts.push(chunk.trim('、'))
+      for (let i = 0; i < parts.length - 1; i++) texts.push(parts[i] + '、')
+      texts.push(parts[parts.length - 1])
     }
     if (row) texts.push(row)
 

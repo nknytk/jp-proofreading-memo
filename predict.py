@@ -16,7 +16,7 @@ tagger = Tagger(f'-d "{unidic_lite.DICDIR}" -r "{mecabrc}"')
 
 def predict(text: str):
     text = preprocess.normalize(text)
-    original_tokens = [token.replace('##', '') for token in preprocess.tokenizer.tokenize(text)]
+    original_tokens = [token.replace('##', '', 1) for token in preprocess.tokenizer.tokenize(text)]
     i = 0
     spaces = []
     for s, token in enumerate(original_tokens):
@@ -44,8 +44,12 @@ def predict(text: str):
             output_tokens.append({'from': original_tokens[i], 'to': '', 'op': 'delete'})
             pass
         else:
-            new_token = preprocess.tokenizer.convert_ids_to_tokens(_to)
-            output_tokens.append({'from': original_tokens[i], 'to': new_token, 'op': 'replace'})
+            new_token = preprocess.tokenizer.convert_ids_to_tokens(_to).replace('##', '', 1)
+            if new_token == original_tokens[i]:
+                output_tokens.append({'from': original_tokens[i], 'to': original_tokens[i], 'op': None})
+            else:
+                output_tokens.append({'from': original_tokens[i], 'to': new_token, 'op': 'replace'})
+
 
     output_text = ''.join(t['to'] for t in output_tokens)
     return {'input': text, 'output': output_text, 'tokens': output_tokens}
