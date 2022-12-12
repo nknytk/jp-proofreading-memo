@@ -9,7 +9,7 @@
 Dockerhubから[Docker image](https://hub.docker.com/r/nknytk/jp-proofreading-memo)を取得して使用する。
 
 ```
-$ sudo docker run --rm -p9310:9310 nknytk/jp-proofreading-memo:v0.2.0
+$ sudo docker run --rm -p9310:9310 nknytk/jp-proofreading-memo:v0.2.1
 ```
 
 http://localhost:9310 にアクセスして利用する。
