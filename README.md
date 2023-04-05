@@ -6,10 +6,14 @@
 
 ### Dockerを使用する場合
 
-Dockerhubから[Docker image](https://hub.docker.com/r/nknytk/jp-proofreading-memo)を取得して使用する。
+Dockerhubから[Docker image](https://hub.docker.com/r/nknytk/jp-proofreading-memo)を取得して使用する。  
+利用制限のためにAPIKEYを設定する場合、環境変数`APIKEY`に値を設定する。
 
 ```
+# 特に利用制限をしない場合
 $ sudo docker run --rm -p9310:9310 nknytk/jp-proofreading-memo:v0.2.1
+# APIKEYによる利用制限をする場合
+$ sudo docker run --rm -p9310:9310 -e APIKEY=${your_api_key} nknytk/jp-proofreading-memo:v0.2.1
 ```
 
 http://localhost:9310 にアクセスして利用する。
@@ -32,7 +36,10 @@ $ pip install -r requirements.txt
 Webアプリケーションの起動
 
 ```
+# 特に利用制限をしない場合
 $ python web.py
+# APIKEYによる利用制限をする場合
+$ APIKEY=${your_api_key} python web.py
 ```
 
 http://localhost:9310 にアクセスして利用する。

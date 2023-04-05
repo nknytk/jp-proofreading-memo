@@ -28,6 +28,11 @@
 <h2>日本語校正補助付きメモ</h2>
 <div class="row">
 	<div class="col-mb-12">
+		<input type="text" id="apikey" class="form-control" placeholder="サーバにAPIKEYを設定した場合は、ここにAPIKEYを記載してください">
+	</div>
+</div>
+<div class="row">
+	<div class="col-mb-12">
 		<h3>入力欄</h3>
 		<textarea class="form-control" id="input-area" rows="5"></textarea>
 		<button class="btn btn-primary" onclick="correct()">校正</button> 
@@ -61,13 +66,15 @@ async function correct() {
   outputArea.appendChild(createSpinner())
 
   const inputs = splitText(document.getElementById('input-area').value)
+  const apikey = document.getElementById('apikey').value
   const outputs = []
   for (let text of inputs) {
     if (text.trim() == '') {
       outputs.push({from: text, to: text, op: null})
     } else {
       if (resultCache[text] == null) {
-        const prediction_raw = await fetch('/correct?text=' + encodeURIComponent(text))
+        const params = `text=${encodeURIComponent(text)}&apikey=${encodeURIComponent(apikey)}`
+        const prediction_raw = await fetch('/correct?' + params)
         const prediction = await prediction_raw.json()
         prediction.tokens.forEach(token => outputs.push(token))
         resultCache[text] = prediction
