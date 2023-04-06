@@ -1,0 +1,9 @@
+{
+    "max_length": 210,
+    "special_tokens": {
+        "CLS": 0,
+	"PAD": 1,
+	"UNK": 2,
+	"MASK": 3
+    }
+}

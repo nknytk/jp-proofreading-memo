@@ -11,9 +11,9 @@ Dockerhubから[Docker image](https://hub.docker.com/r/nknytk/jp-proofreading-me
 
 ```
 # 特に利用制限をしない場合
-$ sudo docker run --rm -p9310:9310 nknytk/jp-proofreading-memo:v0.2.1
+$ sudo docker run --rm -p9310:9310 nknytk/jp-proofreading-memo:v0.3.0
 # APIKEYによる利用制限をする場合
-$ sudo docker run --rm -p9310:9310 -e APIKEY=${your_api_key} nknytk/jp-proofreading-memo:v0.2.1
+$ sudo docker run --rm -p9310:9310 -e APIKEY=${your_api_key} nknytk/jp-proofreading-memo:v0.3.0
 ```
 
 http://localhost:9310 にアクセスして利用する。
@@ -31,7 +31,7 @@ $ pip install torch torchvision torchaudio --extra-index-url https://download.py
 $ pip install -r requirements.txt
 ```
 
-パラメータファイルを[Google Drive](https://drive.google.com/file/d/1C6ciKX3wkWMBuaEIjAMKpZKs3m2Pmw3d/view?usp=sharing)からダウンロードし、`models/`以下に置く
+パラメータファイルを[Google Drive](https://drive.google.com/file/d/1HaH7gFj152TFcE5-IHmVGMbYR9n0hDAY/view?usp=share_link)からダウンロードし、`models/`以下に置く
 
 Webアプリケーションの起動
 
@@ -46,8 +46,10 @@ http://localhost:9310 にアクセスして利用する。
 
 ### 学習から行う場合
 
-Python環境の準備の後、データをダウンロードして学習する。
+Python環境の準備の後、データをダウンロードして学習する。  
+[こちら](https://gist.github.com/nknytk/94445b30118beeb661732dfc68e4a7d5)を参考に、機械生成データを作成して学習、学習済みモデルをさらに[日本語Wikipedia入力誤りデータセット (v2)](https://nlp.ist.i.kyoto-u.ac.jp/?%E6%97%A5%E6%9C%AC%E8%AA%9EWikipedia%E5%85%A5%E5%8A%9B%E8%AA%A4%E3%82%8A%E3%83%87%E3%83%BC%E3%82%BF%E3%82%BB%E3%83%83%E3%83%88)で学習させるのが最も精度が高い。
 
+日本語Wikipedia入力誤りデータセットの学習方法
 ```
 $ cd data
 $ wget "https://nlp.ist.i.kyoto-u.ac.jp/DLcounter/lime.cgi?down=https://nlp.ist.i.kyoto-u.ac.jp/nl-resource/JWTD/jwtd_v2.0.tar.gz&name=JWTDv2.0.tar.gz"
@@ -57,7 +59,7 @@ $ python preprocess.py
 $ python train.py 2
 ```
 
-学習後に表示されるファイル名を`models/v0.2.0.ckpt`にリネームし、Webアプリケーションを起動する。
+学習後に表示されるファイル名を`models/v0.3.0.ckpt`にリネームし、Webアプリケーションを起動する。
 
 ```
 $ python web.py

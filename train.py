@@ -11,7 +11,7 @@ BATCH_SIZE = 32
 MAX_EPOCH = 10
 
 
-def train(model_type):
+def train(model_type, model_path):
     train_data = load_data(f'data/split/train_{model_type}.jsonl')
     val_data = load_data(f'data/split/val_{model_type}.jsonl')
     train_dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
@@ -27,7 +27,7 @@ def train(model_type):
     early_stopping_checkpoint = pl.callbacks.early_stopping.EarlyStopping(monitor='val_loss', mode='min', patience=2)
 
     trainer = pl.Trainer(gpus=1, max_epochs=MAX_EPOCH, callbacks=[save_model_checkpoint, early_stopping_checkpoint])
-    model = BertForMaskedLMPL(BERT_MODEL_NAME)
+    model = BertForMaskedLMPL(BERT_MODEL_NAME) if model_path is None else BertForMaskedLMPL.load_from_checkpoint(model_path)
     trainer.fit(model, train_dataloader, val_dataloader)
     print(save_model_checkpoint.best_model_path)
 
@@ -42,9 +42,10 @@ def load_data(file_path: str):
 
 
 if __name__ == '__main__':
+    model_path = sys.argv[2] if len(sys.argv) > 2 else None
     if sys.argv[1] == '1':
-        print('train insertion')
+        print('train insertion', model_path)
         train('insertion')
     elif sys.argv[1] == '2':
-        print('train replacement')
+        print('train replacement', model_path)
         train('replacement')

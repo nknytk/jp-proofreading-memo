@@ -8,7 +8,7 @@ import preprocess
 from model import BertForMaskedLMPL
 from fugashi import GenericTagger, Tagger
 
-jp_corrector = BertForMaskedLMPL.load_from_checkpoint('models/v0.2.0.ckpt')
+jp_corrector = BertForMaskedLMPL.load_from_checkpoint('models/v0.3.0.ckpt')
 
 mecabrc = os.path.join(unidic_lite.DICDIR, 'mecabrc')
 tagger = Tagger(f'-d "{unidic_lite.DICDIR}" -r "{mecabrc}"')
