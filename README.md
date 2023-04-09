@@ -44,6 +44,8 @@ $ APIKEY=${your_api_key} python web.py
 
 http://localhost:9310 にアクセスして利用する。
 
+[Chrome拡張機能 日本語誤字チェック](https://github.com/nknytk/chrome-extention-jp-proofreader)のAPIサーバとしてして利用する場合、API URLに `http://localhost:9310/correct` と指定する。
+
 ### 学習から行う場合
 
 Python環境の準備の後、データをダウンロードして学習する。  
