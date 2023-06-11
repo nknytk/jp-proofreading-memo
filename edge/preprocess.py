@@ -1,114 +1,51 @@
+from copy import deepcopy
 from difflib import SequenceMatcher
 import json
 import random
 import os
 import re
 import unicodedata
+from tokenization import BertJapaneseTinySegmenterTokenizer
 
-with open('preprocess_config.json') as fp:
-    config = json.load(fp)
-
+MAX_LENGTH = 160
 R = 0.2
-VAL_R = 0.014363915545922156
+N_VAL = 10000
+INPUT_DIR = '../proofreading/data/jwtd_v2.0'
+VOCAB_FILE_PATH = '../albert-japanese/models/tokenizers/wordpiece_tinysegmenter/vocab.txt'
+tokenizer = BertJapaneseTinySegmenterTokenizer(VOCAB_FILE_PATH)
 
 
 def prepare_data():
-    test_file = prepare_jsonl('data/sjis/test.jsonl')
-    for row in load_data('data/jwtd_v2.0/test.jsonl'):
-        test_file.write(json.dumps(row) + '\n')
-    test_file.close()
+    test_insertion, test_replacement = load_data(f'{INPUT_DIR}/test.jsonl')
 
-    train_file = prepare_jsonl('data/sjis/train.jsonl')
-    val_file = prepare_jsonl('data/sjis/val.jsonl')
-    for row in load_data('data/jwtd_v2.0/train.jsonl', R):
-        _row = json.dumps(row) + '\n'
-        if random.random() < VAL_R:
-            val_file.write(_row)
-        else:
-            train_file.write(_row)
-    train_file.close()
-    val_file.close()
+    save_jsonl(test_replacement, 'data/split/test_replacement.jsonl')
+    save_jsonl(test_insertion, 'data/split/test_insertion.jsonl')
 
+    train_val_insertion, train_val_replacement = load_data(f'{INPUT_DIR}/train.jsonl')
+    random.shuffle(train_val_insertion)
+    train_insertion = train_val_insertion[N_VAL:]
+    val_insertion = train_val_insertion[:N_VAL]
+    random.shuffle(train_val_replacement)
+    train_replacement = train_val_replacement[N_VAL:]
+    val_replacement = train_val_replacement[:N_VAL]
 
-def prepare_pretrain_data():
-    train_file = prepare_jsonl('data/sjis/pre_train.jsonl')
-    val_file = prepare_jsonl('data/sjis/pre_val.jsonl')
-    for row in load_data('../gen_data/generated2.jsonl', R):
-        _row = json.dumps(row) + '\n'
-        if random.random() < VAL_R:
-            val_file.write(_row)
-        else:
-            train_file.write(_row)
-    train_file.close()
-    val_file.close()
+    save_jsonl(train_insertion, 'data/split/train_insertion.jsonl')
+    save_jsonl(val_insertion, 'data/split/val_insertion.jsonl')
+    save_jsonl(train_replacement, 'data/split/train_replacement.jsonl')
+    save_jsonl(val_replacement, 'data/split/val_replacement.jsonl')
 
 
-def encode(text: str) -> list:
-    encoding = [config['special_tokens']['CLS']]
-    attention_mask = [1]
-
-    for c in text:
-        if len(encoding) >= config['max_length']:
-            break
-
-        try:
-            b = bytes(c, encoding='sjis')
-        except:
-            encoding.append(config['special_tokens']['UNK'])
-            attention_mask.append(1)
-            continue
-
-        # 1バイト文字はそのまま使用
-        if len(b) == 1:
-            encoding.append(b[0])
-            attention_mask.append(1)
-        # 2バイト文字の場合、未使用領域である
-        #   第一バイトの00-7F,A0-Df,FD-FF
-        #   第二バイトの00-3F,FD-FF
-        # を削除した場合のコードポイントに変換することで、クラス数を削減する
-        elif len(b) == 2:
-            if 128 < b[0] <= 160:
-                b0 = 256 + 189 * (b[0] - 129)
-                b1 = b[1] - 64
-            elif 224 <= b[0] < 254:
-                b0 = 256 + 189 * (b[0] - 193)
-                b1 = b[1] - 64
-            else:
-                raise RuntimeError('unexpected byte pattern {} {}'.format(b[0], b[1]))
-            encoding.append(b0 + b1)
-            attention_mask.append(1)
-
-    return encoding, attention_mask
+def prepare_autogen_data():
+    _, _replacement = load_data('../gen_data/generated2.jsonl')
+    random.shuffle(_replacement)
+    _train = _replacement[N_VAL:]
+    _val = _replacement[:N_VAL]
+    save_jsonl(_train, 'data/pretrain/train.jsonl')
+    save_jsonl(_val, 'data/pretrain/val.jsonl')
 
 
-def decode(output: list) -> str:
-    byte_chars = []
-
-    for c in output:
-        if c in (config['special_tokens']['PAD'], config['special_tokens']['MASK'], config['special_tokens']['CLS']):
-            continue
-        elif c < 256:
-            byte_chars.append((c).to_bytes(1, 'big'))
-        elif 256 <= c < 256 + 189 * 31:
-            b0 = int((c - 256) / 189) + 129
-            b1 = (c - 256) % 189 + 64
-            byte_chars.append((b0 * 256 + b1).to_bytes(2, 'big'))
-        elif 256 + 189 * 31 <= c < 256 + 189 * 61:
-            b0 = int((c - 256) / 189) + 193
-            b1 = (c - 256) % 189 + 64
-            byte_chars.append((b0 * 256 + b1).to_bytes(2, 'big'))
-        else:
-            raise RuntimeError(f'unexpected byte pattern {c}')
-
-    return b''.join(byte_chars).decode('sjis', 'ignore')
-
-
-def pad(values: list, pad_value: int, max_length: int):
-    if len(values) > max_length:
-        del(values[max_length])
-    else:
-        pads = [pad_value] * (max_length - len(values))
-        values.extend(pads)
+def encode_input(text: str):
+    return tokenizer(text, max_length=MAX_LENGTH, padding='max_length', truncation=True)
 
 
 def normalize(text: str) -> str:
@@ -116,83 +53,92 @@ def normalize(text: str) -> str:
     return re.sub('\s+', ' ', text)
 
 
-def load_data(file_path: str, r: float=0.0):
-    token_type_ids = [0] * config['max_length']
+def load_data(file_path: str):
+    insertion_data = []
+    replacement_data = []
 
     with open(file_path) as fp:
         for row in fp:
             data = json.loads(row)
-            bert_input, attention_mask = encode(normalize(data['pre_text']))
-            labels, attention_mask_label = encode(normalize(data['post_text']))
-            labels2 = format_labels(bert_input, labels)
- 
-            pad(bert_input, config['special_tokens']['PAD'], config['max_length'])
-            pad(attention_mask, 0, config['max_length'])
+            bert_input = encode_input(normalize(data['pre_text'])).data
+            labels = encode_input(normalize(data['post_text'])).data['input_ids']
+            diff_info = diff_opcode(bert_input['input_ids'], labels)
 
-            if labels2 is None:
-                pad(labels, config['special_tokens']['PAD'], config['max_length'])
-                pad(attention_mask_label, 0, config['max_length'])
-                yield {
-                    'input_ids': labels,
-                    'labels': labels,
-                    'attention_mask': attention_mask_label,
-                    'token_type_ids': token_type_ids
-                }
+            if diff_info['trainable']:
+                insertions = deepcopy(bert_input)
+                insertions['labels'] = diff_info['insertions']
+                insertion_data.append(insertions)
+                replaced_ids = deepcopy(bert_input)
+                replaced_ids['labels'] = diff_info['replaced_ids']
+                replacement_data.append(replaced_ids)
+                if replaced_ids['input_ids'] != replaced_ids['labels'] and random.random() < R:
+                        replaced_ids2 = deepcopy(replaced_ids)
+                        replaced_ids2['input_ids'] = replaced_ids['labels']
+                        replacement_data.append(replaced_ids2)
 
             else:
-                pad(labels2, config['special_tokens']['PAD'], config['max_length'])
-                yield {
-                    'input_ids': bert_input,
-                    'labels': labels2,
-                    'attention_mask': attention_mask,
-                    'token_type_ids': token_type_ids
-                }
-                if random.random() < r:
-                    pad(labels, config['special_tokens']['PAD'], config['max_length'])
-                    pad(attention_mask_label, 0, config['max_length'])
-                    yield {
-                        'input_ids': labels,
-                        'labels': labels,
-                        'attention_mask': attention_mask_label,
-                        'token_type_ids': token_type_ids
-                    }
+                # 差分が大きすぎて学習が難しいデータは、訂正後の文だけを使い「修正不要」の教師データとして扱う
+                bert_input['input_ids'] = labels
+                bert_input['labels'] = labels
+                replacement_data.append(bert_input)
+
+    return insertion_data, replacement_data
 
 
-def prepare_jsonl(file_path: str):
+def save_jsonl(data: list, file_path: str):
     dir_name = file_path.rsplit('/', 1)[0]
     os.makedirs(dir_name, exist_ok=True)
-    return open(file_path, mode='w')
+    with open(file_path, mode='w') as fp:
+        for row in data:
+            fp.write(json.dumps(row, ensure_ascii=False))
+            fp.write('\n')
 
 
-def format_labels(input_ids, labels):
-    _labels = []
+def diff_opcode(input_ids, labels):
+    insertions = [0] * len(input_ids)  # 挿入の教師データ
+    replaced_ids = deepcopy(input_ids)  # 置換と削除の教師データ
+    trainable = True
 
     for op, i0, i1, j0, j1 in SequenceMatcher(a=input_ids, b=labels).get_opcodes():
         if op == 'equal':
-            _labels.extend(labels[j0:j1])
+            pass
 
         elif op == 'replace':
             if i1 - i0 < j1 - j0:
                 # 置換後の単語数のほうが多い場合、token位置をずらす必要があり学習が難しいので今回は諦める
-                return None
+                is_trainable = False
             else:
                 for k in range(i1 - i0):
                     if j0 + k < j1:
-                        _labels.append(labels[j0 + k])
+                        replaced_ids[i0 + k] = labels[j0 + k]
                     else:
-                        _labels.append(config['special_tokens']['MASK'])
+                        replaced_ids[i0 + k] = 4  # [MASK]
 
         elif op == 'delete':
             for i in range(i0, i1):
-                _labels.append(config['special_tokens']['MASK'])
+                replaced_ids[i] = 4 # [MASK]
 
         elif op == 'insert':
-            #挿入はtoken位置をずらす必要があり難しいので今回は諦める
-            return None
+            if labels[j0] == 0:  # 末尾の[PAD]挿入は無視
+                pass
+            elif i0 >= MAX_LENGTH - j1 + j0:  # 最大長を超える挿入は扱えないので諦める
+                trainable = False
+            elif j1 - j0 == 1:
+                insertions[i0] = 1
+            elif j1 - j0 == 2:
+                insertions[i0] = 2
+            else:  # 挿入すべきtoken数が3以上は難しすぎるので諦める
+                trainable = False
 
-    return _labels
+    # 挿入かtoken数の違う置換があると末尾に非必要な削除フラグが立つので、補正する
+    for i in range(len(replaced_ids) - 1, -1, -1):
+        if replaced_ids[i] != 4:
+            break
+        replaced_ids[i] = input_ids[i]
+
+    return {'trainable': trainable, 'insertions': insertions, 'replaced_ids': replaced_ids}
 
 
 if __name__ == '__main__':
     #prepare_data()
-    prepare_pretrain_data()
+    prepare_autogen_data()

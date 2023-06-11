@@ -1,69 +1,87 @@
 from difflib import SequenceMatcher
-import json
 import os
 from time import time
+import numpy
 import torch
 import preprocess
-
 from model import AlbertPL
 
-#jp_corrector = AlbertPL.load_from_checkpoint('models/sjis/epoch=8-step=296973.ckpt')
-jp_corrector = AlbertPL.load_from_checkpoint('models/sjis/epoch=0-step=8250.ckpt')
-#jp_corrector = AlbertPL.load_from_checkpoint('models/sjis.bak/epoch=1-step=10313.ckpt')
-with open('preprocess_config.json') as fp:
-    config = json.load(fp)
-
-token_type_ids = torch.tensor([[0] * config['max_length']])
+jp_corrector = AlbertPL.load_from_checkpoint('models/medium_trained/medium.ckpt')
+jp_corrector.model.cpu()
 
 
 def predict(text: str):
     text = preprocess.normalize(text)
-    input_ids, attention_mask = preprocess.encode(text)
-    preprocess.pad(input_ids, config['special_tokens']['PAD'], config['max_length'])
-    preprocess.pad(attention_mask, 0, config['max_length'])
+    original_tokens = [token.replace('##', '', 1) for token in preprocess.tokenizer.tokenize(text)]
+    i = 0
+    spaces = []
+    for s, token in enumerate(original_tokens):
+        if token == text[i: i + len(token)]:
+            i += len(token)
+        else:
+            spaces.append(s)
+            i += len(token) + 1
 
+    bert_input = preprocess.encode_input(text)
+    input_ids = _strip_ids(bert_input['input_ids'])
 
-    model_input = {
-        'input_ids': torch.tensor([input_ids]),
-        'attention_mask': torch.tensor([attention_mask]),
-        'token_type_ids': token_type_ids
-    }
+    bert_input_torch = {k: torch.tensor([v]) for k, v in bert_input.items()}
     with torch.no_grad():
-        scores = jp_corrector.model(**model_input).logits
-        corrected_ids = scores[0].argmax(-1).tolist()
+        scores = jp_corrector.model(**bert_input_torch).logits
+        corrected_ids = scores[0].argmax(-1).tolist()[1:len(input_ids)+1]
 
     output_tokens = []
-    for _orig, _from, _to in zip(list(text), input_ids[1:], corrected_ids[1:]):
-        if _from == _to or _to == config['special_tokens']['UNK']:
-            output_tokens.append({'from': _orig, 'to': _orig, 'op': None})
-        elif _to == config['special_tokens']['MASK']:
-            output_tokens.append({'from': _orig, 'to': '', 'op': 'delete'})
-        elif _to == config['special_tokens']['PAD']:
-            continue
+    for i, (_from, _to) in enumerate(zip(input_ids, corrected_ids)):
+        if i in spaces:
+            output_tokens.append({'from': ' ', 'to': ' ', 'op': None})
+        if _from == _to:
+            output_tokens.append({'from': original_tokens[i], 'to': original_tokens[i], 'op': None})
+        elif _to == 4:
+            output_tokens.append({'from': original_tokens[i], 'to': '', 'op': 'delete'})
+            pass
         else:
-            output_tokens.append({'from': _orig, 'to': preprocess.decode([_to]), 'op': 'replace'})
+            new_token = preprocess.tokenizer.convert_ids_to_tokens(_to).replace('##', '', 1)
+            if new_token == original_tokens[i]:
+                output_tokens.append({'from': original_tokens[i], 'to': original_tokens[i], 'op': None})
+            else:
+                output_tokens.append({'from': original_tokens[i], 'to': new_token, 'op': 'replace'})
 
     output_text = ''.join(t['to'] for t in output_tokens)
     return {'input': text, 'output': output_text, 'tokens': output_tokens}
 
 
+def _strip_ids(ids: list) -> list:
+    """ 先頭、末尾のCLS,SEP,PADを除去した単語ID列を返す """
+    _min = 0
+    _max = len(ids) - 1
+    for i in range(_max):
+        if ids[i] not in (0, 2, 3):
+            _min = i
+            break
+    for i in range(_max, -1, -1):
+        if ids[i] not in (0, 2, 3):
+            _max = i
+            break
+    return ids[_min:_max + 1]
+
+
+
 if __name__ == '__main__':
     for txt in [
-        '最近の家電は以外と壊れやすいい。',
-        '取るべき手順が明確でで、誤解サれないことを確認する。',
-        '細菌サッカーが流行してているらしい。',
-        'この番組では細菌話題のチーズケーキを特集します。',
         'ユーザーの思考に合わせた楽曲を配信する',
         'メールに明日の会議の飼料を添付した。',
         '乳酸菌で牛乳を発行するとヨーグルトにになる。',
         '乳酸菌でで牛乳を発発酵するとヨーグルトになる。',
         '突然、子供が帰省を発した。',
-        'これが明日のの懐疑の試料です。',
+        'これが明日のの会議の試料です。',
+        '最近の家電は以外と壊れやすいい。',
+        '取るべき手順が明確で、誤解サれないことを確認する。',
         '空文字の　位置が　　ずれていないことを　確認する'
     ]:
         t0 = time()
         res = predict(txt)['output']
         t1 = time()
-        print(f'from: {txt}')
-        print(f'to  : {res}')
-        print('-----')
+        print(t1 - t0)
+        print(txt)
+        print(res)
+        print('----')

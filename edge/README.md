@@ -10,3 +10,5 @@ $ pip install torch --extra-index-url https://download.pytorch.org/whl/cpu
 $ pip install pytorch-lightning
 $ pip install onnxruntime
 ```
+
+https://github.com/nknytk/albert-japanese-tinysegmenter のmodelsをダウンロードし、ベースモデルとして使用する

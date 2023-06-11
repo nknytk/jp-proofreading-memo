@@ -2,12 +2,10 @@ import json
 import torch
 from transformers import BatchEncoding
 from model import AlbertPL
+import predict
 
-#jp_corrector = AlbertPL.load_from_checkpoint('models/sjis/epoch=8-step=296973.ckpt')
-jp_corrector = AlbertPL.load_from_checkpoint('models/sjis/epoch=0-step=8250.ckpt')
-#jp_corrector = AlbertPL.load_from_checkpoint('models/sjis/epoch=2-step=10829.ckpt')
-with open('preprocess_config.json') as fp:
-    config = json.load(fp)
+jp_corrector = AlbertPL.load_from_checkpoint('models/medium_trained/medium.ckpt')
+jp_corrector.model.cpu()
 
 
 def trim_ids(ids: list):
@@ -16,10 +14,10 @@ def trim_ids(ids: list):
         if ids[i] != 0:
             return ids[1:i + 1]
     """
-    return [_id for _id in ids if _id not in (config['special_tokens']['PAD'], config['special_tokens']['CLS'])]
+    return [_id for _id in ids if _id != 0]
 
 
-with open('./data/sjis/test.jsonl') as fp:
+with open('./data/split/test_replacement.jsonl') as fp:
     row_count = 0
     token_count = 0
     correctly_predicted_rows = 0
